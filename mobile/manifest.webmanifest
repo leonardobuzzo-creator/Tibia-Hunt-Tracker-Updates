@@ -1,0 +1,10 @@
+{
+  "name":"Tibia Hunt Tracker Mobile",
+  "short_name":"Hunt Tracker",
+  "start_url":"./",
+  "scope":"./",
+  "display":"standalone",
+  "background_color":"#121920",
+  "theme_color":"#121920",
+  "description":"Versão mobile light para consulta do Tibia Hunt Tracker"
+}
