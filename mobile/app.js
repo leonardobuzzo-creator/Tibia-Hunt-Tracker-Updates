@@ -8,13 +8,22 @@ const dur=s=>{s=Number(s||0);return Math.floor(s/3600)+'h'+String(Math.floor((s%
 const date=d=>{if(!d)return'';const[y,m,x]=d.split('-');return x+'/'+m+'/'+y};
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const sprite=n=>'https://www.tibiawiki.com.br/wiki/Special:Redirect/file/'+encodeURIComponent(String(n||'').trim().replace(/\s+/g,'_').replace(/(^|_)([a-z])/g,(_,a,b)=>a+b.toUpperCase())+'.gif');
+const xpForLevel=L=>(50*L**3-300*L**2+850*L-600)/3;
+function prefsKey(){return 'tht.mobile.prefs.'+(S.characterId||'none')}
+function getPrefs(){try{return {...{level:205,hoursDay:3,profitGoal:100000000,favorites:[]},...JSON.parse(localStorage.getItem(prefsKey())||'{}')}}catch{return{level:205,hoursDay:3,profitGoal:100000000,favorites:[]}}}
+function savePrefs(p){localStorage.setItem(prefsKey(),JSON.stringify(p))}
+function balancePerHour(x){const sec=Number(x.duration_seconds||0);return sec>0?Number(x.balance||0)*3600/sec:0}
+function recentSessions(days=7){const cutoff=new Date();cutoff.setDate(cutoff.getDate()-days);cutoff.setHours(0,0,0,0);return S.sessions.filter(x=>{const d=new Date((x.hunt_date||'')+'T00:00:00');return !Number.isNaN(d.getTime())&&d>=cutoff})}
+function weightedRate(rows,totalKey){const sec=rows.reduce((v,x)=>v+Number(x.duration_seconds||0),0);return sec?rows.reduce((v,x)=>v+Number(x[totalKey]||0),0)*3600/sec:0}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+
 
 function signed(on){$('#login').classList.toggle('hidden',on);$('#app').classList.toggle('hidden',!on);$('#tabs').classList.toggle('hidden',!on)}
 async function boot(){const{data:{session}}=await db.auth.getSession();if(!session)return signed(false);signed(true);await loadCharacters()}
 async function loadCharacters(){const{data,error}=await db.from('characters').select('id,name,created_at').order('created_at');if(error)throw error;S.characters=data||[];$('#character').innerHTML=S.characters.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');S.characterId=localStorage.getItem('tht.mobile.character')||S.characters[0]?.id||null;if(S.characterId&&!S.characters.some(x=>x.id===S.characterId))S.characterId=S.characters[0]?.id||null;if(S.characterId)$('#character').value=S.characterId;await loadData()}
 async function loadData(){if(!S.characterId){S.hunts=[];S.sessions=[];render();return}$('#syncStatus').textContent='Atualizando...';const[h,s]=await Promise.all([db.from('hunts').select('*').eq('character_id',S.characterId).order('name'),db.from('sessions').select('*').eq('character_id',S.characterId).order('hunt_date',{ascending:false}).order('start_time',{ascending:false}).limit(250)]);if(h.error)throw h.error;if(s.error)throw s.error;S.hunts=h.data||[];S.sessions=s.data||[];localStorage.setItem('tht.mobile.character',S.characterId);render();$('#syncStatus').textContent='Atualizado agora';$('#syncStatus').className='status ok'}
 function stat(name){const a=S.sessions.filter(x=>String(x.hunt_name).toLowerCase()===String(name).toLowerCase()),sec=a.reduce((v,x)=>v+Number(x.duration_seconds||0),0),hr=sec/3600,sum=k=>a.reduce((v,x)=>v+Number(x[k]||0),0),d=a.filter(x=>Number(x.damage)>0&&Number(x.duration_seconds)>0),ds=d.reduce((v,x)=>v+Number(x.duration_seconds),0),dv=d.reduce((v,x)=>v+Number(x.damage),0);return{n:a.length,sec,raw:hr?sum('raw_xp')/hr:0,xp:hr?sum('xp')/hr:0,bal:hr?sum('balance')/hr:0,dmg:ds?dv*3600/ds:0}}
-function render(){renderHome();renderHunts();renderSessions()}
+function render(){renderHome();renderHunts();renderSessions();renderGoals();renderFavorites();renderChart();renderBest();}
 function renderHome(){
   const sec=S.sessions.reduce((v,x)=>v+Number(x.duration_seconds||0),0),hr=sec/3600,sum=k=>S.sessions.reduce((v,x)=>v+Number(x[k]||0),0);
   const last=S.sessions[0]||null;
@@ -35,17 +44,73 @@ function renderHome(){
     $('#lastSessionBody').innerHTML='<div class="empty">Registre uma hunt no desktop para começar.</div>';
   }
 
-  const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-7); cutoff.setHours(0,0,0,0);
-  const recent=S.sessions.filter(x=>{const d=new Date((x.hunt_date||'')+'T00:00:00');return !Number.isNaN(d.getTime())&&d>=cutoff});
+  const recent=recentSessions(7);
   const rsec=recent.reduce((v,x)=>v+Number(x.duration_seconds||0),0),rhr=rsec/3600,rsum=k=>recent.reduce((v,x)=>v+Number(x[k]||0),0);
   const recentCards=[['Sessões',nf(recent.length)],['Tempo',dur(rsec)],['Raw XP/h',short(rhr?rsum('raw_xp')/rhr:0)],['Profit/h',short(rhr?rsum('balance')/rhr:0)]];
   $('#recentStats').innerHTML=recentCards.map(([a,b])=>`<div class="kpi"><span>${a}</span><b>${b}</b></div>`).join('');
 }
-function renderHunts(){$('#hunts').innerHTML=S.hunts.length?S.hunts.map(h=>{const s=stat(h.name);return`<div class="card hunt"><img src="${esc(h.image_path||'')}" onerror="this.style.visibility='hidden'"><div class="grow"><div class="title">${esc(h.name)}</div><div class="meta">${s.n} sessões • ${dur(s.sec)}</div><div class="metrics"><div class="mini"><span>Raw/h</span><b>${short(s.raw)}</b></div><div class="mini"><span>Profit/h</span><b>${short(s.bal)}</b></div><div class="mini"><span>Dano/h</span><b>${s.dmg?short(s.dmg):'—'}</b></div></div></div></div>`}).join(''):'<div class="empty">Nenhuma hunt cadastrada.</div>'}
+function renderHunts(){
+  const prefs=getPrefs(),fav=new Set((prefs.favorites||[]).map(String));
+  $('#hunts').innerHTML=S.hunts.length?S.hunts.map(h=>{const s=stat(h.name),on=fav.has(String(h.id));return`<div class="card hunt"><img src="${esc(h.image_path||'')}" onerror="this.style.visibility='hidden'"><div class="grow"><div class="head"><div><div class="title">${esc(h.name)}</div><div class="meta">${s.n} sessões • ${dur(s.sec)}</div></div><div class="huntActions"><button class="favbtn ${on?'on':''}" data-fav="${h.id}" title="Favoritar">${on?'★':'☆'}</button></div></div><div class="metrics"><div class="mini"><span>Raw/h</span><b>${short(s.raw)}</b></div><div class="mini"><span>Profit/h</span><b>${short(s.bal)}</b></div><div class="mini"><span>Dano/h</span><b>${s.dmg?short(s.dmg):'—'}</b></div></div></div></div>`}).join(''):'<div class="empty">Nenhuma hunt cadastrada.</div>';
+  $$('[data-fav]').forEach(b=>b.onclick=()=>toggleFavorite(b.dataset.fav));
+}
 function renderSessions(){$('#sessions').innerHTML=S.sessions.length?S.sessions.map(s=>`<button class="session" data-id="${s.id}"><div class="head"><div><div class="title">${esc(s.hunt_name)}</div><div class="meta">${date(s.hunt_date)} • ${esc(String(s.start_time||'').slice(0,5))} • ${dur(s.duration_seconds)}</div></div><span class="pill">${nf(s.monsters)} mobs</span></div><div class="metrics"><div class="mini"><span>Raw/h</span><b>${short(s.raw_xph)}</b></div><div class="mini"><span>Profit</span><b>${short(s.balance)}</b></div><div class="mini"><span>Dano/h</span><b>${Number(s.damageph)>0?short(s.damageph):'—'}</b></div></div></button>`).join(''):'<div class="empty">Nenhuma sessão encontrada.</div>';$$('[data-id]').forEach(b=>b.onclick=()=>details(b.dataset.id))}
 function details(id){const s=S.sessions.find(x=>String(x.id)===String(id));if(!s)return;$('#sheetTitle').textContent=s.hunt_name+' • '+date(s.hunt_date);const mobs=Array.isArray(s.monster_details)?[...s.monster_details]:[],total=mobs.reduce((v,x)=>v+Number(x.count||0),0)||Number(s.monsters||0)||1;const metrics=`<div class="grid"><div class="kpi"><span>Raw XP/h</span><b>${short(s.raw_xph)}</b></div><div class="kpi"><span>XP/h</span><b>${short(s.xph)}</b></div><div class="kpi"><span>Profit</span><b>${short(s.balance)}</b></div><div class="kpi"><span>Mobs</span><b>${nf(s.monsters)}</b></div></div>`;const comp=mobs.length?'<div class="card"><h2>Composição</h2>'+mobs.sort((a,b)=>b.count-a.count).map(m=>`<div class="mob"><img src="${sprite(m.name)}" onerror="this.style.visibility='hidden'"><div><div class="title">${esc(m.name)}</div><div class="meta">${nf(m.count)} kills</div></div><div class="pct">${nf(100*Number(m.count||0)/total)}%</div></div>`).join('')+'</div>':'<div class="card"><div class="meta">Esta sessão não possui detalhamento histórico por espécie.</div></div>';$('#sheetBody').innerHTML=metrics+comp;$('#sheet').classList.remove('hidden')}
 
 
+
+function toggleFavorite(id){
+  const p=getPrefs(),arr=(p.favorites||[]).map(String),i=arr.indexOf(String(id));
+  if(i>=0)arr.splice(i,1);else{if(arr.length>=3){alert('Você pode favoritar até 3 hunts para comparação rápida.');return}arr.push(String(id))}
+  p.favorites=arr;savePrefs(p);renderHunts();renderFavorites();
+}
+function renderGoals(){
+  if(!$('#goalCards'))return;
+  const p=getPrefs(),level=Math.max(1,Number(p.level||205)),hours=Math.max(.5,Number(p.hoursDay||3)),profitGoal=Math.max(0,Number(p.profitGoal||100000000));
+  const recent=recentSessions(7),xpRate=weightedRate(recent.length?recent:S.sessions,'xp'),profitRate=weightedRate(recent.length?recent:S.sessions,'balance');
+  const currentXP=xpForLevel(level);
+  const goals=[
+    {label:'Level 230',target:230,value:currentXP,max:xpForLevel(230),remain:Math.max(0,xpForLevel(230)-currentXP),rate:xpRate},
+    {label:'Level 300',target:300,value:currentXP,max:xpForLevel(300),remain:Math.max(0,xpForLevel(300)-currentXP),rate:xpRate}
+  ];
+  const trackedProfit=S.sessions.reduce((v,x)=>v+Number(x.balance||0),0);
+  const cards=goals.map(g=>{const base=xpForLevel(Math.min(level,g.target)),start=xpForLevel(1),pct=level>=g.target?100:clamp((base-start)/(g.max-start)*100,0,100),hrs=g.rate?g.remain/g.rate:0,days=hrs?hrs/hours:0;return`<div class="goalcard"><div class="goalhead"><b>${g.label}</b><span class="score">${pct.toFixed(0)}%</span></div><div class="goalbar"><span style="width:${pct}%"></span></div><div class="goalmeta">${level>=g.target?'Meta atingida':short(g.remain)+' XP restantes'+(hrs?' • '+hrs.toFixed(1)+'h • ~'+Math.ceil(days)+' dias':'')}</div></div>`}).join('');
+  const ppct=profitGoal?clamp(trackedProfit/profitGoal*100,0,100):0,remainProfit=Math.max(0,profitGoal-trackedProfit),ph=profitRate?remainProfit/profitRate:0,pdays=ph?ph/hours:0;
+  $('#goalCards').innerHTML=cards+`<div class="goalcard"><div class="goalhead"><b>Profit ${short(profitGoal)}</b><span class="score">${ppct.toFixed(0)}%</span></div><div class="goalbar"><span style="width:${ppct}%"></span></div><div class="goalmeta">${remainProfit<=0?'Meta atingida':short(remainProfit)+' restantes'+(ph?' • '+ph.toFixed(1)+'h • ~'+Math.ceil(pdays)+' dias':'')}</div></div>`;
+}
+function renderFavorites(){
+  if(!$('#favoriteCompare'))return;
+  const p=getPrefs(),ids=(p.favorites||[]).map(String),rows=ids.map(id=>S.hunts.find(h=>String(h.id)===id)).filter(Boolean).map(h=>({h,s:stat(h.name)}));
+  $('#favCount').textContent=rows.length+'/3';
+  if(!rows.length){$('#favoriteCompare').innerHTML='<div class="empty">Toque na ☆ de uma hunt para adicionar até 3 favoritas.</div>';return}
+  $('#favoriteCompare').innerHTML='<div class="compareTable"><div class="compareRow headrow"><div>Hunt</div><div>Raw/h</div><div>Profit/h</div><div>Dano/h</div></div>'+rows.map(x=>`<div class="compareRow"><div><b>${esc(x.h.name)}</b><div class="meta">${x.s.n} sessões</div></div><div>${short(x.s.raw)}</div><div>${short(x.s.bal)}</div><div>${x.s.dmg?short(x.s.dmg):'—'}</div></div>`).join('')+'</div>';
+}
+function renderChart(){
+  if(!$('#sessionChart'))return;
+  const metric=$('#chartMetric')?.value||'raw_xph',rows=[...S.sessions].slice(0,10).reverse();
+  const vals=rows.map(x=>metric==='balanceph'?balancePerHour(x):Number(x[metric]||0)),valid=vals.filter(v=>v>0),max=Math.max(...valid,1),min=Math.min(...valid,0);
+  if(!rows.length){$('#sessionChart').innerHTML='<div class="empty">Sem sessões para o gráfico.</div>';return}
+  const W=360,H=180,pad=24,n=Math.max(1,rows.length-1),pts=vals.map((v,i)=>{const x=pad+i*(W-pad*2)/n,y=H-pad-(v/max)*(H-pad*2);return{x,y,v,row:rows[i]}});
+  const poly=pts.map(p=>p.x+','+p.y).join(' ');
+  $('#sessionChart').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img"><line x1="${pad}" y1="${H-pad}" x2="${W-pad}" y2="${H-pad}" stroke="#354956"/><polyline points="${poly}" fill="none" stroke="#d4ac72" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${pts.map((p,i)=>`<circle cx="${p.x}" cy="${p.y}" r="4" fill="#80c8f6"/><text class="chartValue" x="${p.x}" y="${Math.max(12,p.y-8)}" text-anchor="middle">${short(p.v)}</text><text class="chartLabel" x="${p.x}" y="${H-5}" text-anchor="middle">${i+1}</text>`).join('')}</svg>`;
+}
+function renderBest(){
+  if(!$('#bestCards'))return;
+  const recent=recentSessions(7),rows=recent.length?recent:S.sessions.slice(0,20);
+  if(!rows.length){$('#bestCards').innerHTML='<div class="empty">Sem sessões registradas.</div>';return}
+  const raw=[...rows].sort((a,b)=>Number(b.raw_xph||0)-Number(a.raw_xph||0))[0];
+  const profit=[...rows].sort((a,b)=>balancePerHour(b)-balancePerHour(a))[0];
+  const bestBalance=[...rows].sort((a,b)=>Number(b.balance||0)-Number(a.balance||0))[0];
+  const cards=[
+    ['Melhor Raw XP/h',short(raw.raw_xph),raw],
+    ['Melhor Profit/h',short(balancePerHour(profit)),profit],
+    ['Maior profit em sessão',short(bestBalance.balance),bestBalance]
+  ];
+  $('#bestCards').innerHTML=cards.map(([title,value,s])=>`<div class="bestcard"><small>${title}</small><div class="big">${value}</div><div class="title">${esc(s.hunt_name)}</div><div class="meta">${date(s.hunt_date)} • ${dur(s.duration_seconds)}</div></div>`).join('');
+}
+function openGoals(){
+  const p=getPrefs();$('#goalLevel').value=p.level;$('#goalHoursDay').value=p.hoursDay;$('#goalProfit').value=p.profitGoal;$('#goalSheet').classList.remove('hidden');
+}
 const RASHID_PLACES=[
   ['Svargrond','Taverna de Dankwart, ao sul do templo'],
   ['Liberty Bay','Taverna de Lyonel, a oeste do depot'],
@@ -123,6 +188,12 @@ $('#logout').onclick=async()=>{await db.auth.signOut();S={characters:[],characte
 $('#character').onchange=async e=>{S.characterId=e.target.value;await loadData()};
 $('#refresh').onclick=()=>loadData().catch(e=>{$('#syncStatus').textContent=e.message;$('#syncStatus').className='status error'});
 $('#refreshToday').onclick=()=>loadTibiaToday().catch(()=>{});
+$('#goalSettingsBtn').onclick=openGoals;
+$('#goalSettingsBtnMore').onclick=openGoals;
+$('#closeGoalSheet').onclick=()=>$('#goalSheet').classList.add('hidden');
+$('#goalSheet').onclick=e=>{if(e.target===$('#goalSheet'))$('#goalSheet').classList.add('hidden')};
+$('#saveGoals').onclick=()=>{const p=getPrefs();p.level=Math.max(1,Number($('#goalLevel').value||205));p.hoursDay=Math.max(.5,Number($('#goalHoursDay').value||3));p.profitGoal=Math.max(0,Number($('#goalProfit').value||100000000));savePrefs(p);$('#goalSheet').classList.add('hidden');renderGoals()};
+$('#chartMetric').onchange=renderChart;
 $('#closeSheet').onclick=()=>$('#sheet').classList.add('hidden');$('#sheet').onclick=e=>{if(e.target===$('#sheet'))$('#sheet').classList.add('hidden')};
 $('#tabs button').forEach(t=>t.onclick=()=>{$('#tabs button').forEach(x=>x.classList.remove('active'));t.classList.add('active');['home','hunts','sessions','more'].forEach(p=>$('#p-'+p).classList.toggle('hidden',p!==t.dataset.page));if(t.dataset.page==='more')loadTibiaToday().catch(()=>{});scrollTo({top:0,behavior:'smooth'})});
 if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
