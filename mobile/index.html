@@ -34,6 +34,26 @@
   <div id="kpis" class="grid"></div>
   <div class="card"><div class="sectionhead"><div><small>Última sessão</small><h2 id="lastSessionTitle">—</h2></div><span id="lastSessionDate" class="pill">—</span></div><div id="lastSessionBody"></div></div>
   <div class="card"><div class="sectionhead"><div><small>Últimos 7 dias</small><h2>Ritmo recente</h2></div></div><div id="recentStats" class="grid compact"></div></div>
+
+  <div class="card">
+    <div class="sectionhead"><div><small>Metas</small><h2>Progresso do personagem</h2></div><button id="goalSettingsBtn">Configurar</button></div>
+    <div id="goalCards" class="goalgrid"></div>
+  </div>
+
+  <div class="card">
+    <div class="sectionhead"><div><small>Favoritas</small><h2>Comparação rápida</h2></div><span id="favCount" class="pill">0/3</span></div>
+    <div id="favoriteCompare"></div>
+  </div>
+
+  <div class="card">
+    <div class="sectionhead"><div><small>Evolução</small><h2>Últimas 10 sessões</h2></div><select id="chartMetric" class="smallselect"><option value="raw_xph">Raw XP/h</option><option value="balanceph">Profit/h</option><option value="damageph">Dano/h</option></select></div>
+    <div id="sessionChart" class="chartbox"></div>
+  </div>
+
+  <div class="card">
+    <div class="sectionhead"><div><small>Destaques</small><h2>Melhores resultados recentes</h2></div></div>
+    <div id="bestCards" class="bestgrid"></div>
+  </div>
 </section>
   <section id="p-hunts" class="hidden"><div id="hunts"></div></section>
   <section id="p-sessions" class="hidden"><div id="sessions"></div></section>
@@ -48,6 +68,7 @@
     </div>
     <div id="todayStatus" class="status"></div>
   </div>
+  <div class="card"><h2>Preferências locais</h2><p>Favoritos e metas ficam salvos apenas neste dispositivo. Os dados das hunts continuam somente leitura no Supabase.</p><button id="goalSettingsBtnMore">Configurar metas</button></div>
   <div class="card"><h2>Versão mobile</h2><p>Consulta somente leitura dos dados do mesmo Supabase do aplicativo desktop.</p><button id="refresh" class="primary">Atualizar dados</button><div id="syncStatus" class="status"></div></div>
 </section>
 </section>
@@ -61,6 +82,16 @@
 </nav>
 
 <div id="sheet" class="sheet hidden"><div class="sheetbox"><div class="sheethead"><div><small>Detalhes da sessão</small><h2 id="sheetTitle"></h2></div><button id="closeSheet">Fechar</button></div><div id="sheetBody"></div></div></div>
+
+<div id="goalSheet" class="sheet hidden"><div class="sheetbox"><div class="sheethead"><div><small>Metas locais</small><h2>Planejamento</h2></div><button id="closeGoalSheet">Fechar</button></div>
+  <div class="card formcard">
+    <label>Level atual</label><input id="goalLevel" type="number" min="1" max="9999" inputmode="numeric">
+    <label>Horas de hunt por dia</label><input id="goalHoursDay" type="number" min="0.5" max="24" step="0.5" inputmode="decimal">
+    <label>Meta de profit</label><input id="goalProfit" type="number" min="0" step="1000000" inputmode="numeric">
+    <button id="saveGoals" class="primary">Salvar metas neste aparelho</button>
+    <div class="status">As projeções usam seu XP/h e profit/h recentes. O level considera o início do level atual como referência, sem porcentagem interna do level.</div>
+  </div>
+</div>
 
 <script src="./config.js"></script>
 <script type="module" src="./app.js"></script>
