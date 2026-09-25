@@ -195,7 +195,7 @@ $('#goalSheet').onclick=e=>{if(e.target===$('#goalSheet'))$('#goalSheet').classL
 $('#saveGoals').onclick=()=>{const p=getPrefs();p.level=Math.max(1,Number($('#goalLevel').value||205));p.hoursDay=Math.max(.5,Number($('#goalHoursDay').value||3));p.profitGoal=Math.max(0,Number($('#goalProfit').value||100000000));savePrefs(p);$('#goalSheet').classList.add('hidden');renderGoals()};
 $('#chartMetric').onchange=renderChart;
 $('#closeSheet').onclick=()=>$('#sheet').classList.add('hidden');$('#sheet').onclick=e=>{if(e.target===$('#sheet'))$('#sheet').classList.add('hidden')};
-$('#tabs button').forEach(t=>t.onclick=()=>{$('#tabs button').forEach(x=>x.classList.remove('active'));t.classList.add('active');['home','hunts','sessions','more'].forEach(p=>$('#p-'+p).classList.toggle('hidden',p!==t.dataset.page));if(t.dataset.page==='more')loadTibiaToday().catch(()=>{});scrollTo({top:0,behavior:'smooth'})});
+$$('#tabs button').forEach(t=>t.onclick=()=>{$$('#tabs button').forEach(x=>x.classList.remove('active'));t.classList.add('active');['home','hunts','sessions','more'].forEach(p=>$('#p-'+p).classList.toggle('hidden',p!==t.dataset.page));if(t.dataset.page==='more')loadTibiaToday().catch(()=>{});scrollTo({top:0,behavior:'smooth'})});
 if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 db.auth.onAuthStateChange((_e,session)=>{if(!session)signed(false)});
 boot().catch(e=>{signed(false);$('#loginStatus').textContent=e.message;$('#loginStatus').className='status error'});
