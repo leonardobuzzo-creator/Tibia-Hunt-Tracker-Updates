@@ -29,10 +29,27 @@
     <button id="logout">Sair</button>
   </div>
 
-  <section id="p-home"><div id="kpis" class="grid"></div><div class="card"><h2>Melhores hunts</h2><div id="topHunts"></div></div></section>
+  <section id="p-home">
+  <div id="homeHero" class="card hero"></div>
+  <div id="kpis" class="grid"></div>
+  <div class="card"><div class="sectionhead"><div><small>Última sessão</small><h2 id="lastSessionTitle">—</h2></div><span id="lastSessionDate" class="pill">—</span></div><div id="lastSessionBody"></div></div>
+  <div class="card"><div class="sectionhead"><div><small>Últimos 7 dias</small><h2>Ritmo recente</h2></div></div><div id="recentStats" class="grid compact"></div></div>
+</section>
   <section id="p-hunts" class="hidden"><div id="hunts"></div></section>
   <section id="p-sessions" class="hidden"><div id="sessions"></div></section>
-  <section id="p-more" class="hidden"><div class="card"><h2>Versão mobile</h2><p>Consulta somente leitura dos dados do mesmo Supabase do aplicativo desktop.</p><button id="refresh" class="primary">Atualizar dados</button><div id="syncStatus" class="status"></div></div></section>
+  <section id="p-more" class="hidden">
+  <div class="card tibia-today">
+    <div class="sectionhead"><div><small>Informações atuais</small><h2>✦ Tibia Hoje</h2></div><button id="refreshToday">Atualizar</button></div>
+    <div id="todayGrid" class="todaygrid">
+      <div class="todaycard"><img id="rashidImg" alt=""><div><small>Rashid</small><b id="rashidCity">Carregando...</b><p id="rashidDetail"></p></div></div>
+      <div class="todaycard"><img id="creatureImg" alt=""><div><small>Boosted Creature</small><b id="boostedCreature">Carregando...</b><p>50% mais XP e loot, além de respawn acelerado.</p></div></div>
+      <div class="todaycard"><img id="bossImg" alt=""><div><small>Boosted Boss</small><b id="boostedBoss">Carregando...</b><p>Boss boostado do dia.</p></div></div>
+      <div class="todaycard eventcard"><div class="eventicon">⚡</div><div><small>Próximo Double XP / Skill</small><b id="doubleEvent">Consultando...</b><p id="doubleEventDetail"></p></div></div>
+    </div>
+    <div id="todayStatus" class="status"></div>
+  </div>
+  <div class="card"><h2>Versão mobile</h2><p>Consulta somente leitura dos dados do mesmo Supabase do aplicativo desktop.</p><button id="refresh" class="primary">Atualizar dados</button><div id="syncStatus" class="status"></div></div>
+</section>
 </section>
 </main>
 
