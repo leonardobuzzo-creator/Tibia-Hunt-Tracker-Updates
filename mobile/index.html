@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Hunt Tracker">
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="stylesheet" href="./styles.css">
+<link rel="stylesheet" href="./styles.css?v=20260925-5">
 <title>Tibia Hunt Tracker Mobile</title>
 </head>
 <body>
@@ -75,10 +75,10 @@
 </main>
 
 <nav id="tabs" class="tabs hidden">
-<button data-page="home" class="active">◈<span>Resumo</span></button>
-<button data-page="hunts">♜<span>Hunts</span></button>
-<button data-page="sessions">▤<span>Sessões</span></button>
-<button data-page="more">●<span>Mais</span></button>
+<button type="button" data-page="home" class="active">◈<span>Resumo</span></button>
+<button type="button" data-page="hunts">♜<span>Hunts</span></button>
+<button type="button" data-page="sessions">▤<span>Sessões</span></button>
+<button type="button" data-page="more">●<span>Mais</span></button>
 </nav>
 
 <div id="sheet" class="sheet hidden"><div class="sheetbox"><div class="sheethead"><div><small>Detalhes da sessão</small><h2 id="sheetTitle"></h2></div><button id="closeSheet">Fechar</button></div><div id="sheetBody"></div></div></div>
@@ -93,7 +93,30 @@
   </div>
 </div>
 
-<script src="./config.js"></script>
-<script type="module" src="./app.js"></script>
+<script>
+(function(){
+  function changePage(page){
+    ['home','hunts','sessions','more'].forEach(function(name){
+      var el=document.getElementById('p-'+name);
+      if(el) el.classList.toggle('hidden', name!==page);
+    });
+    document.querySelectorAll('#tabs button[data-page]').forEach(function(btn){
+      btn.classList.toggle('active',btn.dataset.page===page);
+    });
+    try { window.scrollTo({top:0,behavior:'smooth'}); } catch(_e) { window.scrollTo(0,0); }
+    document.dispatchEvent(new CustomEvent('tht:pagechange',{detail:{page:page}}));
+  }
+  window.THT_CHANGE_PAGE=changePage;
+  document.addEventListener('click',function(event){
+    var btn=event.target.closest && event.target.closest('#tabs button[data-page]');
+    if(!btn)return;
+    event.preventDefault();
+    event.stopPropagation();
+    changePage(btn.dataset.page);
+  },true);
+})();
+</script>
+<script src="./config.js?v=20260925-5"></script>
+<script type="module" src="./app.js?v=20260925-5"></script>
 </body>
 </html>
